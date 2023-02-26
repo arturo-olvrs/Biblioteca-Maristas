@@ -9,15 +9,16 @@
 
 //Necesarios para Ethernet Shield
 byte mac[] = {   0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
-IPAddress ip(10,11,16,250); // IP local del Arduino. Donde va a estar alojado el programa. ------------------------------------<<<<<<<<<<<<<
-EthernetServer server (80);  //Puerto estandard 80
+IPAddress ip(192,168,1,177); // Poned aqui vuestra IP <------- <------- <-------- 
+EthernetServer server (80);  // Arrancamos el servidor en el puerto estandard 80
+//byte ip[] = {192,168,1,178 }; // Must be unique on local network
 
 //Necesarios para obtener la hora
-unsigned int localPort = 8888;       // local port to listen for UDP packets
-const char timeServer[] = "time.nist.gov"; // time.nist.gov NTP server
-const int NTP_PACKET_SIZE = 48; // NTP time stamp is in the first 48 bytes of the message
-byte packetBuffer[NTP_PACKET_SIZE]; //buffer to hold incoming and outgoing packets
-EthernetUDP Udp; // A UDP instance to let us send and receive packets over UDP
+#define localPort 123            //  Puerto local para escuchar UDP
+IPAddress timeServer(193,92,150,3);       // time.nist.gov NTP server (fallback)
+const int NTP_PACKET_SIZE= 48;   // La hora son los primeros 48 bytes del mensaje
+char packetBuffer[ NTP_PACKET_SIZE];  // buffer para los paquetes
+EthernetUDP Udp;       // Una instancia de UDP para enviar y recibir mensajes
 
 //Necesario para RFID
 //RST           D6
@@ -31,12 +32,7 @@ MFRC522 mfrc522(SS_PIN, RST_PIN);   // Crear instancia del MFRC522
 
 
 //Servidor donde se encuentra el formulario para registrar.
-String servidor_registrar="www.danipartal.net/biblioteca/add_user.php";
-
-//Necesario para el buzzer
-const int buzzer = 5;
-
-bool mostrarHora; //Para Mostrar la Hora o no
+String servidor_registrar="localhost/BibliotecaPHP/add_user.php";
 
 void setup()
 {
@@ -44,40 +40,20 @@ void setup()
    while (!Serial) {
     ; // wait for serial port to connect. Needed for native USB port only
    }
+   
    Ethernet.begin(mac, ip);
-   mostrarHora = false;
-   /* HORA ERRÓNEA.
-    * 
-    * Para mostrar la hora, es necesario este código, pero la IP varía
-    * 
-     if (Ethernet.begin(mac) == 0) {
-      Serial.println("Failed to configure Ethernet using DHCP");
-      // Check for Ethernet hardware present
-      if (Ethernet.hardwareStatus() == EthernetNoHardware) {
-        Serial.println("Ethernet shield was not found.  Sorry, can't run without hardware. :(");
-      } else if (Ethernet.linkStatus() == LinkOFF) {
-        Serial.println("Ethernet cable is not connected.");
-      }
-      // no point in carrying on, so do nothing forevermore:
-      while (true) {
-        delay(1);
-      }
-    }*/
-  
    server.begin();          // Inicia el servidor web
-   SPI.begin();         //Función que inicializa SPI
    Udp.begin(localPort);
+   SPI.begin();         //Función que inicializa SPI
    mfrc522.PCD_Init();     //Función  que inicializa RFID
    Serial.print("Servidor Web en la direccion: ");
    Serial.println(Ethernet.localIP());
    //Serial.print(":");
    //Serial.println (9090);
-   pinMode(buzzer, OUTPUT);
-   digitalWrite(buzzer, LOW);
 }
 
 //Funciones declaradas abajo
-void sendNTPpacket(const char * address);
+unsigned long sendNTPpacket(IPAddress&);
 String ObtenerHora();
 String FormatDigits(int);
 
@@ -93,14 +69,7 @@ void loop()
       if (mfrc522.PICC_ReadCardSerial())
       {  
          CodLlave = ObtenerCodigo(mfrc522.uid.uidByte, mfrc522.uid.size);
-         if (mostrarHora){
-          Date = ObtenerHora();
-         }
-         
-         //Buzzer
-         tone(buzzer, 1600);
-         delay(80);
-         noTone(buzzer);
+         Date = ObtenerHora();
 
          // Finalizar lectura actual
          mfrc522.PICC_HaltA();
@@ -139,12 +108,9 @@ void loop()
                       client.print("</a></strong>\t");
                       client.print("<button onclick='copyToClipBoard()'><ion-icon name='copy-outline'></ion-icon></button></p>");
                       
-                      if (mostrarHora){
-                        client.print("<p>Hora de lectura: ");
-                        client.print(Date);
-                        client.print("</p>");
-                      }
-                      
+                      client.print("<p>Hora de lectura: ");
+                      client.print(Date);
+                      client.print("</p>");
 
                       client.print("<p>Para registrar esta llave, redirígase a <a onclick='copyToClipBoard()' href='http://");
                       client.print(servidor_registrar);
@@ -197,12 +163,11 @@ void loop()
 
 
 
-// send an NTP request to the time server at the given address
-void sendNTPpacket(const char * address) {
+unsigned long sendNTPpacket(IPAddress& address) {
   // set all bytes in the buffer to 0
-  memset(packetBuffer, 0, NTP_PACKET_SIZE);
+  memset(packetBuffer, '\0', NTP_PACKET_SIZE);
   // Initialize values needed to form NTP request
-  // (see URL above for details on the packets)
+  // (see URL above for details on the qpackets)
   packetBuffer[0] = 0b11100011;   // LI, Version, Mode
   packetBuffer[1] = 0;     // Stratum, or type of clock
   packetBuffer[2] = 6;     // Polling Interval
@@ -215,7 +180,7 @@ void sendNTPpacket(const char * address) {
 
   // all NTP fields have been given values, now
   // you can send a packet requesting a timestamp:
-  Udp.beginPacket(address, 123); // NTP requests are to port 123
+  Udp.beginPacket(address, localPort); // NTP requests are to port 123
   Udp.write(packetBuffer, NTP_PACKET_SIZE);
   Udp.endPacket();
 }
@@ -223,45 +188,26 @@ void sendNTPpacket(const char * address) {
 
 
 String ObtenerHora(){
-  sendNTPpacket(timeServer); // send an NTP packet to a time server
+  sendNTPpacket(timeServer);          // Enviar una peticion
+  delay(100);                        // Damos tiempo a la respuesta
 
-  // wait to see if a reply is available
-  delay(1000);
-  int packet_size = Udp.parsePacket();
-  if (packet_size) {
+  if ( Udp.parsePacket() )
+    {
+      //Serial.println("Hemos recibido un paquete");
+      Udp.read(packetBuffer,NTP_PACKET_SIZE);           // Leer el paquete
+    }
 
-    // We've received a packet, read the data from it
-    Udp.read(packetBuffer, NTP_PACKET_SIZE); // read the packet into the buffer
+  unsigned long highWord = word(packetBuffer[40], packetBuffer[41]);
+  unsigned long lowWord = word(packetBuffer[42], packetBuffer[43]);
 
-    // the timestamp starts at byte 40 of the received packet and is four bytes,
-    // or two words, long. First, extract the two words:
-
-    unsigned long highWord = word(packetBuffer[40], packetBuffer[41]);
-    unsigned long lowWord = word(packetBuffer[42], packetBuffer[43]);
-    // combine the four bytes (two words) into a long integer
-    // this is NTP time (seconds since Jan 1 1900):
-    unsigned long secsSince1900 = highWord << 16 | lowWord;
-    //Serial.print("Seconds since Jan 1 1900 = ");
-    //Serial.println(secsSince1900);
-
-    // now convert NTP time into everyday time:
-    //Serial.print("Unix time = ");
-    // Unix time starts on Jan 1 1970. In seconds, that's 2208988800:
-    const unsigned long seventyYears = 2208988800UL;
-    // subtract seventy years:
-    unsigned long epoch = secsSince1900 - seventyYears;
-    // print Unix time:
-    //Serial.println(epoch);
-
-    unsigned long secondsInHour = 3600UL;
-    epoch += secondsInHour*1; //UTC +1 (horario invierno)
-     
-    
-    setTime (epoch);
-  }
+  //NTP manda desde 1900, y Unix trabaja desde 1970
+  unsigned long secsSince1900 = highWord << 16 | lowWord; //Segundos desde 1 Enero de 1900
+  const unsigned long seventyYears = 2208988800UL; //Segundos en 70 años
+  unsigned long epoch = secsSince1900 - seventyYears;
   
-  
-
+  unsigned long secondsInHour = 3600UL;
+  epoch += secondsInHour*1; //UTC +1 (horario invierno)
+  setTime (epoch);
 
   String Date="<strong>";
 

@@ -4,8 +4,7 @@
 
 //Necesarios para Ethernet Shield
 byte mac[] = {   0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
-IPAddress ip(10,11,16,251); // IP del Arduino
-IPAddress myDns(192, 168, 0, 1);///////////////
+IPAddress ip(192,168,1,177); // IP del Arduino
 EthernetClient client;
 
 
@@ -21,20 +20,7 @@ MFRC522 mfrc522(SS_PIN, RST_PIN);   // Crear instancia del MFRC522
 
 
 //Dirección IP del servidor con la página PHP
-char server[]="www.danipartal.net";
-
-//Necesario para BUZZER
-#define buzzer 5
-
-//Necesario para LEDs
-#define LedRojo 8
-#define LedVerde 9
-
-//Necesario para RELE
-#define rele 2
-#define positivo 3
-#define negativo 4
-
+char server[]="danipartal.net";
 
 void setup()
 {
@@ -43,59 +29,19 @@ void setup()
     ; // wait for serial port to connect. Needed for native USB port only
    }
    
+   Ethernet.begin(mac, ip);
    SPI.begin();         //Función que inicializa SPI
    mfrc522.PCD_Init();     //Función  que inicializa RFID
-
-
-
-   // start the Ethernet connection:
-    Serial.println("Initialize Ethernet with DHCP:");
-    if (Ethernet.begin(mac) == 0) {
-      Serial.println("Failed to configure Ethernet using DHCP");
-      // Check for Ethernet hardware present
-      if (Ethernet.hardwareStatus() == EthernetNoHardware) {
-        Serial.println("Ethernet shield was not found.  Sorry, can't run without hardware. :(");
-        while (true) {
-          delay(1); // do nothing, no point running without Ethernet hardware
-        }
-      }
-      if (Ethernet.linkStatus() == LinkOFF) {
-        Serial.println("Ethernet cable is not connected.");
-      }
-      // try to congifure using IP address instead of DHCP:
-      Ethernet.begin(mac, ip, myDns);
-      Serial.print("IP assigned: ");
-      Serial.println(Ethernet.localIP());
-    } else {
-      Serial.print("  DHCP assigned IP ");
-      Serial.println(Ethernet.localIP());
-    }
-
-     
-
-   pinMode(buzzer, OUTPUT);
-   pinMode(LedRojo, OUTPUT);
-   pinMode(LedVerde, OUTPUT);
-   pinMode(rele, OUTPUT);
-
-   digitalWrite(buzzer, LOW);
-   digitalWrite(LedRojo, LOW);
-   digitalWrite(LedVerde, LOW);
-   digitalWrite(rele, LOW);
-
-   pinMode(positivo, OUTPUT);
-   digitalWrite(positivo, HIGH);
-   pinMode(negativo, OUTPUT);
-   digitalWrite(negativo, LOW);
+   Serial.print("IP: ");
+   Serial.println(Ethernet.localIP());
 }
 
-String codigo ="";        //Aquí se almacena la respuesta del servidor
-String respuesta_Sql = "";        //Aquí se almacena el nombre que envía el código PHP
+String codigo;        //Aquí se almacena la respuesta del servidor
+String resultado;        //Aquí se almacena el nombre que envía el código PHP
 boolean fin = false;
 
-String httpRequest(String);
+int httpRequest(String);
 String ObtenerCodigo(byte, byte);
-void reaccion (String);
 
 
 String CodLlave="";
@@ -110,11 +56,7 @@ void loop()
          // Finalizar lectura actual
          mfrc522.PICC_HaltA();
 
-         //Hace la petición
-         respuesta_Sql = httpRequest(CodLlave);
-
-         //Buzzer + LEDS
-         reaccion(respuesta_Sql);
+         httpRequest(CodLlave);
       }
    }
    delay(250);
@@ -123,9 +65,9 @@ void loop()
 
 
 // Con esta función hacemos la conecion con el servidor
-String httpRequest(String identificador) {
+int httpRequest(String identificador) {
   // Comprobar si hay conexión
-  if (client.connect(server, 80)) {
+  if (client.connect(server, 8000)) { ///////////////////////////////////Comprobar puerto
     String peticion=""; //Variable para petición HTTP
     Serial.println("nConectado");
     // Enviar la petición HTTP
@@ -146,12 +88,6 @@ String httpRequest(String identificador) {
   }
   else {
     // Si no conseguimos conectarnos
-    for (int i=0; i<3; i++){
-      tone(buzzer, 1600);
-      delay(80);
-      noTone(buzzer);
-      delay(80);
-    }
     Serial.println("Conexión fallida");
     Serial.println("Desconectando");
     client.stop();
@@ -166,10 +102,7 @@ String httpRequest(String identificador) {
     //Habilitamos la comprobación del código recibido
     fin = true;
   }
-   
   
-  //Borramos lo que haya almacenado en el string resultado
-  String resultado = "";
   //Si está habilitada la comprobación del código entramos en el IF
   if (fin)  {
     Serial.println(codigo);
@@ -177,7 +110,8 @@ String httpRequest(String identificador) {
     int longitud = codigo.length();
     //Buscamos en que posición del string se encuentra nuestra variable
     int posicion = codigo.indexOf("valor=");
-
+    //Borramos lo que haya almacenado en el string resultado
+    resultado = "";
     //Analizamos el código obtenido y almacenamos el nombre en el string nombre
     for (int i = posicion + 6; i < longitud; i ++){
       if (codigo[i] == ';') i = longitud;
@@ -194,37 +128,7 @@ String httpRequest(String identificador) {
   
   //Borrar código y salir de la función//Dirección IP del servidor
   codigo="";
-  return resultado;
-}
-
-
-
-
-void reaccion (String resultado){
-  if (resultado == "1"){ //Entra
-    digitalWrite (rele, HIGH);
-    tone(buzzer, 1600);
-    digitalWrite (LedVerde, HIGH);
-
-    delay(80);
-    noTone(buzzer);
-
-    delay(2000);
-    digitalWrite (LedVerde, LOW);
-    digitalWrite (rele, LOW);
-  }
-
-  else if (resultado == "0"){
-    digitalWrite (LedRojo, HIGH);
-
-    for (int i=0; i<3; i++){
-      tone(buzzer, 1600);
-      delay(80);
-      noTone(buzzer);
-      delay(80);
-    }
-    digitalWrite (LedRojo, LOW);
-  }
+  return 1;
 }
 
 
