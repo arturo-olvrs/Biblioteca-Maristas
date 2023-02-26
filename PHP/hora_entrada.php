@@ -1,9 +1,9 @@
 <?php
 //Variables para DataBase
-$username="uizmimvv2wcd3";
-$password="9xhqongskab4";
-$host="danipartal.net";
-$database="dbq5x9hjq8yxq3";
+$username="root";
+$password="root";
+$host="localhost";
+$database="Pruebas";
 
 //Configuración de la BD
 $db = new mysqli($host, $username, $password, $database);
@@ -31,11 +31,11 @@ if ($usuario["CodLlave"] != $CodLlave){
 }
 
 
-/*
 //Obtener el estado actual. ¿Está dentro o fuera?
 $query2 = "SELECT * FROM UsuarioEstado WHERE IdUsuario='".$usuario["IdUsuario"]."'";
 $resultado2 = $db->query($query2);
 $estado_prev = $resultado2->fetch_array(MYSQLI_ASSOC);
+
 
 
 //Según el estado, le deja entrar o no.
@@ -47,18 +47,15 @@ else{ //El usuario está ya DENTRO. No puede entrar.
     $valor=0;
     echo "valor=" . $valor . ";<br>";
     die ("User inside the library. Cannot enter.");
-}*/
+}
 
-//Cambiar zona horaria a la de Paris
-$query4 = "SET time_zone = 'Europe/Paris'";
-$resultado4 = $db->query($query4);
 
 //Añadir Registro de Entrada.
-$query5 = "INSERT INTO Registros(IdUsuario, Dia, HoraEntrada) VALUES ('" . $usuario["IdUsuario"] . "', CURDATE(), CURTIME())";
-$resultado5 = $db->query($query5);
+$query4 = "INSERT INTO Registros(IdUsuario, Dia, HoraEntrada) VALUES ('" . $usuario["IdUsuario"] . "', CURDATE(), CURTIME())";
+$resultado4 = $db->query($query4);
 
 //Responder con Valor=1.
-if (!($resultado1 && $resultado4 && $resultado5)){ //$resultado2 && $resultado3 &&
+if (!($resultado1 && $resultado2 && $resultado3 && $resultado4)){
     $valor=0;
     echo "valor=" . $valor . ";<br>";
     echo "Ha habido un error. Notificar al encargado.<br><strong>Error:</strong> " . $db->error . ".<br> Vuelva a intentarlo.";

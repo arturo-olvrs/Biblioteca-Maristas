@@ -1,9 +1,9 @@
 <?php
   //Variables para DataBase
-  $username="uizmimvv2wcd3";
-  $password="9xhqongskab4";
-  $host="danipartal.net";
-  $database="dbq5x9hjq8yxq3";
+  $username="root";
+  $password="root";
+  $host="localhost";
+  $database="Pruebas";
 
   //Configuración de la BD
   $db = new mysqli($host, $username, $password, $database);
@@ -46,19 +46,16 @@
     $resultado1 = $db->query($query1);
 
 
-    /*
     //Obtengo sus datos
     $query2 = 'SELECT * FROM Usuarios WHERE CodLlave="'.$CodLlave.'"';
     $resultado2 = $db->query($query2);
     $ultimo_usuario = $resultado2->fetch_array(MYSQLI_ASSOC);
 
-    
     //Lo añado a la tabla dinámica UsuarioEstado, dándole el valor por defecto 0
     $query3="INSERT INTO UsuarioEstado (IdUsuario) VALUES ('".$ultimo_usuario["IdUsuario"]."')";
     $resultado3 = $db->query($query3);
-    */
 
-    if (!($resultado1)){ // && $resultado2 && $resultado3
+    if (!($resultado1 && $resultado2 && $resultado3)){
       $feedback = "Ha habido un error. Notificar al encargado.<br><strong>Error:</strong> " . $db->error . ".<br> Vuelva a intentarlo.";
     }else{
       header("Location: add_success.php", TRUE, 307);
@@ -82,7 +79,7 @@
       <br><br>
 
       <label>Nombre:</label>
-    	<input id="nombre" name="nombre" type="text" required minlength="3" maxlength="50" pattern="[A-Z][A-za-z ]+" value="<?=$nombre?>">
+    	<input id="nombre" name="nombre" type="text" required minlength="3" maxlength="50" pattern="[A-za-z][A-za-z ]+" value="<?=$nombre?>">
       <br><br>
 
       <label>Primer Apellido:</label>

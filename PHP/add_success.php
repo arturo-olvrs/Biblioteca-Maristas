@@ -1,9 +1,9 @@
 <?php
   //Variables para DataBase
-  $username="uizmimvv2wcd3";
-  $password="9xhqongskab4";
-  $host="danipartal.net";
-  $database="dbq5x9hjq8yxq3";
+  $username="root";
+  $password="root";
+  $host="localhost";
+  $database="Pruebas";
 
   //Configuración de la BD
   $db = new mysqli($host, $username, $password, $database);
